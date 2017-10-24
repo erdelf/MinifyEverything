@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>MinifyEverything</name>
+  <author>erdelf</author>
+  <targetVersion>0.17.0</targetVersion>
+  <description>
+You want to minify every building ? Well then you came to the right place 
+
+This mod searches the entire database of buildings and adds the minifiable feature to it.
+Should work with pretty much every mod.
+    </description>
+</ModMetaData>
