@@ -39,6 +39,32 @@ namespace MinifyEverything
             harmony.Patch(AccessTools.Method(typeof(Blueprint_Install), nameof(Blueprint_Install.TryReplaceWithSolidThing)), null, new HarmonyMethod(typeof(MinifyEverything), nameof(AfterInstall)));
             harmony.Patch(AccessTools.Method(typeof(WorkGiver_ConstructDeliverResources), "InstallJob"), null, null, new HarmonyMethod(typeof(MinifyEverything), nameof(InstallJobTranspiler)));
             harmony.Patch(AccessTools.Method(typeof(Designator_Build), nameof(Designator.DesignateSingleCell)), null, null, new HarmonyMethod(typeof(MinifyEverything), nameof(DesignateSingleCellTranspiler)));
+            harmony.Patch(AccessTools.Method(typeof(WorkGiver_ConstructDeliverResourcesToBlueprints), nameof(WorkGiver_Scanner.JobOnThing)), new HarmonyMethod(typeof(MinifyEverything), nameof(JobOnThingPrefix)), null);
+        }
+
+        public static bool JobOnThingPrefix(Pawn pawn, Thing t)
+        {
+            if (t is Blueprint_Build bb)
+            {
+                Def sourceDef = bb.def.entityDefToBuild;
+                if (sourceDef is ThingDef td &&
+                td.Minifiable &&
+                t.Map.listerThings.ThingsOfDef(td.minifiedDef).OfType<MinifiedThing>().Where(mf => 
+                    mf.GetInnerIfMinified().Stuff == bb.stuffToUse).FirstOrDefault(m => 
+                    pawn.CanReserveAndReach(m, PathEndMode.Touch, Danger.Deadly)) is MinifiedThing mini &&
+                !mini.IsForbidden(pawn.Faction) &&
+                InstallBlueprintUtility.ExistingBlueprintFor(mini) == null &&
+                mini.IsInValidStorage())
+                {
+                    IntVec3 pos = t.Position;
+                    Rot4 rot4 = t.Rotation;
+                    Faction fac = t.Faction;
+                    t.Destroy();
+                    GenConstruct.PlaceBlueprintForInstall(mini, pos, mini.Map, rot4, fac);
+                    return false;
+                }
+            }
+            return true;
         }
 
         public static IEnumerable<CodeInstruction> DesignateSingleCellTranspiler(IEnumerable<CodeInstruction> instructions)
@@ -48,17 +74,16 @@ namespace MinifyEverything
                 yield return (instruction.opcode == OpCodes.Call && instruction.operand == placeBlueprint) ? new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(MinifyEverything), nameof(ReplaceBlueprintForBuild))) : instruction;
         }
 
-        static HashSet<WeakReference> usedStuff = new HashSet<WeakReference>();
-
         public static Blueprint ReplaceBlueprintForBuild(BuildableDef sourceDef, IntVec3 center, Map map, Rot4 rotation, Faction faction, ThingDef stuff)
         {
             if (sourceDef is ThingDef td &&
                 td.Minifiable &&
                 map.listerThings.ThingsOfDef(td.minifiedDef).OfType<MinifiedThing>().Where(t => t.GetInnerIfMinified().Stuff == stuff).FirstOrDefault(m => map.reachability.CanReach(center, m, PathEndMode.Touch, TraverseMode.ByPawn, Danger.Deadly)) is MinifiedThing mini &&
                 !mini.IsForbidden(faction) &&
-                !map.reservationManager.IsReservedByAnyoneOf(mini, faction) && !usedStuff.Any(wr => wr.IsAlive && wr.Target == mini))
+                !map.reservationManager.IsReservedByAnyoneOf(mini, faction)&&
+                InstallBlueprintUtility.ExistingBlueprintFor(mini) == null &&
+                mini.IsInValidStorage())
             {
-                usedStuff.Add(new WeakReference(mini));
                 return GenConstruct.PlaceBlueprintForInstall(mini, center, map, rotation, faction);
             }
             else
