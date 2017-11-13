@@ -184,15 +184,13 @@ namespace MinifyEverything
                 if (t is Blueprint_Build bb)
                 {
                     Def sourceDef = bb.def.entityDefToBuild;
-                    Log.Message("hey: " + bb.def.entityDefToBuild.defName);
                     if (sourceDef is ThingDef td &&
                         td.Minifiable &&
                         t.Map.listerThings.ThingsOfDef(td.minifiedDef).OfType<MinifiedThing>().Where(mf =>
                             mf.GetInnerIfMinified().Stuff == bb.stuffToUse).FirstOrDefault(m =>
                             pawn.CanReserveAndReach(m, PathEndMode.Touch, Danger.Deadly)) is MinifiedThing mini &&
                         !mini.IsForbidden(pawn.Faction) &&
-                        InstallBlueprintUtility.ExistingBlueprintFor(mini) == null &&
-                        mini.IsInValidStorage())
+                        InstallBlueprintUtility.ExistingBlueprintFor(mini) == null)
                     {
                         IntVec3 pos = t.Position;
                         Rot4 rot4 = t.Rotation;
@@ -226,8 +224,7 @@ namespace MinifyEverything
                 map.listerThings.ThingsOfDef(td.minifiedDef).OfType<MinifiedThing>().Where(t => t.GetInnerIfMinified().Stuff == stuff).FirstOrDefault(m => map.reachability.CanReach(center, m, PathEndMode.Touch, TraverseMode.ByPawn, Danger.Deadly)) is MinifiedThing mini &&
                 !mini.IsForbidden(faction) &&
                 !map.reservationManager.IsReservedByAnyoneOf(mini, faction)&&
-                InstallBlueprintUtility.ExistingBlueprintFor(mini) == null &&
-                mini.IsInValidStorage())
+                InstallBlueprintUtility.ExistingBlueprintFor(mini) == null)
             {
                 return GenConstruct.PlaceBlueprintForInstall(mini, center, map, rotation, faction);
             }
