@@ -152,7 +152,7 @@ namespace MinifyEverything
             HarmonyInstance harmony = HarmonyInstance.Create("rimworld.erdelf.minify_everything");
             harmony.Patch(AccessTools.Method(typeof(Blueprint_Install), nameof(Blueprint_Install.TryReplaceWithSolidThing)), null, new HarmonyMethod(typeof(MinifyEverything), nameof(AfterInstall)));
             harmony.Patch(AccessTools.Method(typeof(WorkGiver_ConstructDeliverResources), "InstallJob"), null, null, new HarmonyMethod(typeof(MinifyEverything), nameof(InstallJobTranspiler)));
-            harmony.Patch(AccessTools.Method(typeof(Designator_Build), nameof(Designator.DesignateSingleCell)), null, null, new HarmonyMethod(typeof(MinifyEverything), nameof(DesignateSingleCellTranspiler)));
+            //harmony.Patch(AccessTools.Method(typeof(Designator_Build), nameof(Designator.DesignateSingleCell)), null, null, new HarmonyMethod(typeof(MinifyEverything), nameof(DesignateSingleCellTranspiler)));
             harmony.Patch(AccessTools.Method(typeof(WorkGiver_ConstructDeliverResourcesToBlueprints), nameof(WorkGiver_Scanner.JobOnThing)), new HarmonyMethod(typeof(MinifyEverything), nameof(JobOnThingPrefix)), null);
         }
         static MethodInfo shortHashGiver = AccessTools.Method(typeof(ShortHashGiver), "GiveShortHash");
@@ -184,13 +184,12 @@ namespace MinifyEverything
                 if (t is Blueprint_Build bb)
                 {
                     Def sourceDef = bb.def.entityDefToBuild;
-                    if (sourceDef is ThingDef td &&
-                        td.Minifiable &&
-                        t.Map.listerThings.ThingsOfDef(td.minifiedDef).OfType<MinifiedThing>().Where(mf =>
+                    if (sourceDef is ThingDef td && td.Minifiable &&
+                            t.Map.listerThings.ThingsOfDef(td.minifiedDef).OfType<MinifiedThing>().Where(mf =>
                             mf.GetInnerIfMinified().Stuff == bb.stuffToUse).FirstOrDefault(m =>
                             pawn.CanReserveAndReach(m, PathEndMode.Touch, Danger.Deadly)) is MinifiedThing mini &&
-                        !mini.IsForbidden(pawn.Faction) &&
-                        InstallBlueprintUtility.ExistingBlueprintFor(mini) == null)
+                            !mini.IsForbidden(pawn.Faction) && mini.GetInnerIfMinified().def == td &&
+                            InstallBlueprintUtility.ExistingBlueprintFor(mini) == null)
                     {
                         IntVec3 pos = t.Position;
                         Rot4 rot4 = t.Rotation;
@@ -222,8 +221,8 @@ namespace MinifyEverything
             if (sourceDef is ThingDef td &&
                 td.Minifiable &&
                 map.listerThings.ThingsOfDef(td.minifiedDef).OfType<MinifiedThing>().Where(t => t.GetInnerIfMinified().Stuff == stuff).FirstOrDefault(m => map.reachability.CanReach(center, m, PathEndMode.Touch, TraverseMode.ByPawn, Danger.Deadly)) is MinifiedThing mini &&
-                !mini.IsForbidden(faction) &&
-                !map.reservationManager.IsReservedByAnyoneOf(mini, faction)&&
+                !mini.IsForbidden(faction) && mini.GetInnerIfMinified().def == td &&
+                !map.reservationManager.IsReservedByAnyoneOf(mini, faction) &&
                 InstallBlueprintUtility.ExistingBlueprintFor(mini) == null)
             {
                 return GenConstruct.PlaceBlueprintForInstall(mini, center, map, rotation, faction);
