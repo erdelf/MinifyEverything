@@ -9,69 +9,67 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection.Emit;
 using Verse.AI;
-using System.Threading;
 
 namespace MinifyEverything
 {
-    
-    class MinifySettings : ModSettings
+    internal class MinifySettings : ModSettings
     {
         public List<ThingDef> disabledDefList = new List<ThingDef>();
 
         public override void ExposeData()
         {
             base.ExposeData();
-            List<string> list = this.disabledDefList?.Select(td => td.defName).ToList() ?? new List<string>();
-            Scribe_Collections.Look(ref list, "disabledDefList");
-            this.disabledDefList = list.Select(s => DefDatabase<ThingDef>.GetNamedSilentFail(s)).OfType<ThingDef>().ToList();
+            List<string> list = this.disabledDefList?.Select(selector: td => td.defName).ToList() ?? new List<string>();
+            Scribe_Collections.Look(list: ref list, label: "disabledDefList");
+            this.disabledDefList = list.Select(selector: DefDatabase<ThingDef>.GetNamedSilentFail).Where(predicate: td => td != null).ToList();
         }
     }
 
     [StaticConstructorOnStartup]
-    class MinifyMod : Mod
+    internal class MinifyMod : Mod
     {
         public static MinifyMod instance;
-        MinifySettings settings;
-        Vector2 leftScrollPosition;
-        Vector2 rightScrollPosition;
-        string searchTerm = "";
-        ThingDef leftSelectedDef;
-        ThingDef rightSelectedDef;
+        private MinifySettings settings;
+        private Vector2 leftScrollPosition;
+        private Vector2 rightScrollPosition;
+        private string searchTerm = "";
+        private ThingDef leftSelectedDef;
+        private ThingDef rightSelectedDef;
 
-        public MinifyMod(ModContentPack content) : base(content) => instance = this;
+        public MinifyMod(ModContentPack content) : base(content: content) => instance = this;
 
         internal MinifySettings Settings
         {
-            get => settings ?? (settings = GetSettings<MinifySettings>());
-            set => settings = value;
+            get => this.settings ?? (this.settings = this.GetSettings<MinifySettings>());
+            set => this.settings = value;
         }
 
         public override void DoSettingsWindowContents(Rect inRect)
         {
-            base.DoSettingsWindowContents(inRect);
+            base.DoSettingsWindowContents(inRect: inRect);
             Text.Font = GameFont.Medium;
-            Rect topRect = inRect.TopPart(0.05f);
-            this.searchTerm = Widgets.TextField(topRect.RightPart(0.95f).LeftPart(0.95f), this.searchTerm);
-            Rect labelRect = inRect.TopPart(0.1f).BottomHalf();
-            Rect bottomRect = inRect.BottomPart(0.9f);
+            Rect topRect = inRect.TopPart(pct: 0.05f);
+            this.searchTerm = Widgets.TextField(rect: topRect.RightPart(pct: 0.95f).LeftPart(pct: 0.95f), text: this.searchTerm);
+            Rect labelRect = inRect.TopPart(pct: 0.1f).BottomHalf();
+            Rect bottomRect = inRect.BottomPart(pct: 0.9f);
 
             #region leftSide
-            Rect leftRect = bottomRect.LeftHalf().RightPart(0.9f).LeftPart(0.9f);
-            GUI.BeginGroup(leftRect, new GUIStyle(GUI.skin.box));
-            List<ThingDef> found = DefDatabase<ThingDef>.AllDefs.Where(td =>
-                td.Minifiable && (td.defName.Contains(this.searchTerm) || td.label.Contains(this.searchTerm)) && !this.Settings.disabledDefList.Contains(td)).OrderBy(td => td.LabelCap ?? td.defName).ToList();
+            Rect leftRect = bottomRect.LeftHalf().RightPart(pct: 0.9f).LeftPart(pct: 0.9f);
+            GUI.BeginGroup(position: leftRect, style: new GUIStyle(other: GUI.skin.box));
+            List<ThingDef> found = DefDatabase<ThingDef>.AllDefs.Where(predicate: td =>
+                td.Minifiable && (td.defName.Contains(value: this.searchTerm) || td.label.Contains(value: this.searchTerm)) && !this.Settings.disabledDefList.Contains(item: td)).OrderBy(keySelector: td => td.LabelCap ?? td.defName).ToList();
             float num = 3f;
-            Widgets.BeginScrollView(leftRect.AtZero(), ref this.leftScrollPosition, new Rect(0f, 0f, leftRect.width / 10 * 9, found.Count() * 32f));
+            Widgets.BeginScrollView(outRect: leftRect.AtZero(), scrollPosition: ref this.leftScrollPosition, viewRect: new Rect(x: 0f, y: 0f, width: leftRect.width / 10 * 9, height: found.Count * 32f));
             if (!found.NullOrEmpty())
             {
                 foreach (ThingDef def in found)
                 {
-                    Rect rowRect = new Rect(5, num, leftRect.width - 6, 30);
-                    Widgets.DrawHighlightIfMouseover(rowRect);
+                    Rect rowRect = new Rect(x: 5, y: num, width: leftRect.width - 6, height: 30);
+                    Widgets.DrawHighlightIfMouseover(rect: rowRect);
                     if (def == this.leftSelectedDef)
-                        Widgets.DrawHighlightSelected(rowRect);
-                    Widgets.Label(rowRect, def.LabelCap ?? def.defName);
-                    if (Widgets.ButtonInvisible(rowRect))
+                        Widgets.DrawHighlightSelected(rect: rowRect);
+                    Widgets.Label(rect: rowRect, label: def.LabelCap ?? def.defName);
+                    if (Widgets.ButtonInvisible(butRect: rowRect))
                         this.leftSelectedDef = def;
 
                     num += 32f;
@@ -84,21 +82,21 @@ namespace MinifyEverything
 
             #region rightSide
 
-            Widgets.Label(labelRect.RightHalf().RightPart(0.9f), "Disabled Minifying for:");
-            Rect rightRect = bottomRect.RightHalf().RightPart(0.9f).LeftPart(0.9f);
-            GUI.BeginGroup(rightRect, GUI.skin.box);
+            Widgets.Label(rect: labelRect.RightHalf().RightPart(pct: 0.9f), label: "Disabled Minifying for:");
+            Rect rightRect = bottomRect.RightHalf().RightPart(pct: 0.9f).LeftPart(pct: 0.9f);
+            GUI.BeginGroup(position: rightRect, style: GUI.skin.box);
             num = 6f;
-            Widgets.BeginScrollView(rightRect.AtZero(), ref this.rightScrollPosition, new Rect(0f, 0f, rightRect.width / 5 * 4, this.Settings.disabledDefList.Count * 32f));
+            Widgets.BeginScrollView(outRect: rightRect.AtZero(), scrollPosition: ref this.rightScrollPosition, viewRect: new Rect(x: 0f, y: 0f, width: rightRect.width / 5 * 4, height: this.Settings.disabledDefList.Count * 32f));
             if (!this.Settings.disabledDefList.NullOrEmpty())
             {
-                foreach (ThingDef def in this.Settings.disabledDefList.Where(def => (def.defName.Contains(this.searchTerm) || def.label.Contains(this.searchTerm))))
+                foreach (ThingDef def in this.Settings.disabledDefList.Where(predicate: def => (def.defName.Contains(value: this.searchTerm) || def.label.Contains(value: this.searchTerm))))
                 {
-                    Rect rowRect = new Rect(5, num, leftRect.width - 6, 30);
-                    Widgets.DrawHighlightIfMouseover(rowRect);
+                    Rect rowRect = new Rect(x: 5, y: num, width: leftRect.width - 6, height: 30);
+                    Widgets.DrawHighlightIfMouseover(rect: rowRect);
                     if (def == this.rightSelectedDef)
-                        Widgets.DrawHighlightSelected(rowRect);
-                    Widgets.Label(rowRect, def.LabelCap ?? def.defName);
-                    if (Widgets.ButtonInvisible(rowRect))
+                        Widgets.DrawHighlightSelected(rect: rowRect);
+                    Widgets.Label(rect: rowRect, label: def.LabelCap ?? def.defName);
+                    if (Widgets.ButtonInvisible(butRect: rowRect))
                         this.rightSelectedDef = def;
 
                     num += 32f;
@@ -110,20 +108,20 @@ namespace MinifyEverything
 
 
             #region buttons
-            if (Widgets.ButtonImage(bottomRect.BottomPart(0.6f).TopPart(0.1f).RightPart(0.525f).LeftPart(0.1f), TexUI.ArrowTexRight) && this.leftSelectedDef != null)
+            if (Widgets.ButtonImage(butRect: bottomRect.BottomPart(pct: 0.6f).TopPart(pct: 0.1f).RightPart(pct: 0.525f).LeftPart(pct: 0.1f), tex: TexUI.ArrowTexRight) && this.leftSelectedDef != null)
             {
-                this.Settings.disabledDefList.Add(this.leftSelectedDef);
-                this.Settings.disabledDefList = this.Settings.disabledDefList.OrderBy(td => td.LabelCap ?? td.defName).ToList();
+                this.Settings.disabledDefList.Add(item: this.leftSelectedDef);
+                this.Settings.disabledDefList = this.Settings.disabledDefList.OrderBy(keySelector: td => td.LabelCap ?? td.defName).ToList();
                 this.rightSelectedDef = this.leftSelectedDef;
                 this.leftSelectedDef = null;
-                MinifyEverything.RemoveMinifiedFor(this.rightSelectedDef);
+                MinifyEverything.RemoveMinifiedFor(def: this.rightSelectedDef);
             }
-            if (Widgets.ButtonImage(bottomRect.BottomPart(0.4f).TopPart(0.15f).RightPart(0.525f).LeftPart(0.1f), TexUI.ArrowTexLeft) && this.rightSelectedDef != null)
+            if (Widgets.ButtonImage(butRect: bottomRect.BottomPart(pct: 0.4f).TopPart(pct: 0.15f).RightPart(pct: 0.525f).LeftPart(pct: 0.1f), tex: TexUI.ArrowTexLeft) && this.rightSelectedDef != null)
             {
-                this.Settings.disabledDefList.Remove(this.rightSelectedDef);
+                this.Settings.disabledDefList.Remove(item: this.rightSelectedDef);
                 this.leftSelectedDef = this.rightSelectedDef;
                 this.rightSelectedDef = null;
-                MinifyEverything.AddMinifiedFor(this.leftSelectedDef);
+                MinifyEverything.AddMinifiedFor(def: this.leftSelectedDef);
             }
             #endregion
 
@@ -134,46 +132,47 @@ namespace MinifyEverything
     }
 
     [StaticConstructorOnStartup]
-    static class MinifyEverything
+    internal static class MinifyEverything
     {
         static MinifyEverything()
         {   
-            minified = ThingDef.Named("MinifiedFurniture");
-            DefDatabase<ThingDef>.AllDefsListForReading.ForEach(td =>
+            minified = ThingDef.Named(defName: "MinifiedFurniture");
+            DefDatabase<ThingDef>.AllDefsListForReading.ForEach(action: td =>
             {
                 if(td.building != null && td.blueprintDef != null && !td.Minifiable)
                 {
-                        if(td.defName.Contains("Bed"))
-                        Log.Message("hey");
-                    AddMinifiedFor(td);
+                        if(td.defName.Contains(value: "Bed"))
+                        Log.Message(text: "hey");
+                    AddMinifiedFor(def: td);
                 }
             });
-            MinifyMod.instance.Settings.disabledDefList.ForEach(td => RemoveMinifiedFor(td));
-            HarmonyInstance harmony = HarmonyInstance.Create("rimworld.erdelf.minify_everything");
-            harmony.Patch(AccessTools.Method(typeof(Blueprint_Install), nameof(Blueprint_Install.TryReplaceWithSolidThing)), null, new HarmonyMethod(typeof(MinifyEverything), nameof(AfterInstall)));
-            harmony.Patch(AccessTools.Method(typeof(WorkGiver_ConstructDeliverResources), "InstallJob"), null, null, new HarmonyMethod(typeof(MinifyEverything), nameof(InstallJobTranspiler)));
+            MinifyMod.instance.Settings.disabledDefList.ForEach(action: RemoveMinifiedFor);
+            HarmonyInstance harmony = HarmonyInstance.Create(id: "rimworld.erdelf.minify_everything");
+            harmony.Patch(original: AccessTools.Method(type: typeof(Blueprint_Install), name: nameof(Blueprint_Install.TryReplaceWithSolidThing)), prefix: null, postfix: new HarmonyMethod(type: typeof(MinifyEverything), name: nameof(AfterInstall)));
+            harmony.Patch(original: AccessTools.Method(type: typeof(WorkGiver_ConstructDeliverResources), name: "InstallJob"), prefix: null, postfix: null, transpiler: new HarmonyMethod(type: typeof(MinifyEverything), name: nameof(InstallJobTranspiler)));
             //harmony.Patch(AccessTools.Method(typeof(Designator_Build), nameof(Designator.DesignateSingleCell)), null, null, new HarmonyMethod(typeof(MinifyEverything), nameof(DesignateSingleCellTranspiler)));
-            harmony.Patch(AccessTools.Method(typeof(WorkGiver_ConstructDeliverResourcesToBlueprints), nameof(WorkGiver_Scanner.JobOnThing)), new HarmonyMethod(typeof(MinifyEverything), nameof(JobOnThingPrefix)), null);
+            harmony.Patch(original: AccessTools.Method(type: typeof(WorkGiver_ConstructDeliverResourcesToBlueprints), name: nameof(WorkGiver_Scanner.JobOnThing)), prefix: new HarmonyMethod(type: typeof(MinifyEverything), name: nameof(JobOnThingPrefix)), postfix: null);
         }
-        static MethodInfo shortHashGiver = AccessTools.Method(typeof(ShortHashGiver), "GiveShortHash");
-        static ThingDef minified;
+
+        private static readonly MethodInfo shortHashGiver = AccessTools.Method(type: typeof(ShortHashGiver), name: "GiveShortHash");
+        private static readonly ThingDef minified;
 
         public static void AddMinifiedFor(ThingDef def)
         {
             def.minifiedDef = minified;
-            ThingDef minifiedDef = Traverse.Create(typeof(ThingDefGenerator_Buildings)).Method("NewBlueprintDef_Thing", def, true, def.blueprintDef).GetValue<ThingDef>();
+            ThingDef minifiedDef = Traverse.Create(type: typeof(ThingDefGenerator_Buildings)).Method("NewBlueprintDef_Thing", def, true, def.blueprintDef).GetValue<ThingDef>();
             minifiedDef.deepCommonality = 0f;
             minifiedDef.ResolveReferences();
             minifiedDef.PostLoad();
-            shortHashGiver.Invoke(null, new object[] { minifiedDef, typeof(ThingDef) });
+            shortHashGiver.Invoke(obj: null, parameters: new object[] { minifiedDef, typeof(ThingDef) });
             //Log.Message(minifiedDef.defName);
-            DefDatabase<ThingDef>.Add(minifiedDef);
+            DefDatabase<ThingDef>.Add(def: minifiedDef);
         }
 
         public static void RemoveMinifiedFor(ThingDef def)
         {
-            ThingDef td = ThingDef.Named(def.defName + ThingDefGenerator_Buildings.BlueprintDefNameSuffix + ThingDefGenerator_Buildings.InstallBlueprintDefNameSuffix);
-            Traverse.Create(typeof(DefDatabase<ThingDef>)).Method("Remove", new Type[] { typeof(ThingDef) }).GetValue(td);
+            ThingDef td = ThingDef.Named(defName: ThingDefGenerator_Buildings.BlueprintDefNamePrefix + ThingDefGenerator_Buildings.InstallBlueprintDefNamePrefix + def.defName);
+            Traverse.Create(type: typeof(DefDatabase<ThingDef>)).Method(name: "Remove", paramTypes: new[] { typeof(ThingDef) }).GetValue(td);
             def.minifiedDef = null;
         }
 
@@ -185,34 +184,34 @@ namespace MinifyEverything
                 {
                     Def sourceDef = bb.def.entityDefToBuild;
                     if (sourceDef is ThingDef td && td.Minifiable &&
-                            t.Map.listerThings.ThingsOfDef(td.minifiedDef).OfType<MinifiedThing>().Where(mf =>
-                            mf.GetInnerIfMinified().Stuff == bb.stuffToUse).FirstOrDefault(m =>
-                            pawn.CanReserveAndReach(m, PathEndMode.Touch, Danger.Deadly)) is MinifiedThing mini &&
-                            !mini.IsForbidden(pawn.Faction) && mini.GetInnerIfMinified().def == td &&
-                            InstallBlueprintUtility.ExistingBlueprintFor(mini) == null)
+                            t.Map.listerThings.ThingsOfDef(def: td.minifiedDef).OfType<MinifiedThing>().Where(predicate: mf =>
+                            mf.GetInnerIfMinified().Stuff == bb.stuffToUse).FirstOrDefault(predicate: m =>
+                            pawn.CanReserveAndReach(target: m, peMode: PathEndMode.Touch, maxDanger: Danger.Deadly)) is MinifiedThing mini &&
+                            !mini.IsForbidden(faction: pawn.Faction) && mini.GetInnerIfMinified().def == td &&
+                            InstallBlueprintUtility.ExistingBlueprintFor(th: mini) == null)
                     {
                         IntVec3 pos = t.Position;
                         Rot4 rot4 = t.Rotation;
                         Faction fac = t.Faction;
                         t.Destroy();
-                        GenConstruct.PlaceBlueprintForInstall(mini, pos, mini.Map, rot4, fac);
+                        GenConstruct.PlaceBlueprintForInstall(itemToInstall: mini, center: pos, map: mini.Map, rotation: rot4, faction: fac);
                         return false;
                     }
                 }
             }
             catch (Exception ex)
             {
-                Log.Message(ex.ToString());
+                Log.Message(text: ex.ToString());
             }
             return true;
         }
 
         public static IEnumerable<CodeInstruction> DesignateSingleCellTranspiler(IEnumerable<CodeInstruction> instructions)
         {
-            MethodInfo placeBlueprint = AccessTools.Method(typeof(GenConstruct), nameof(GenConstruct.PlaceBlueprintForBuild));
+            MethodInfo placeBlueprint = AccessTools.Method(type: typeof(GenConstruct), name: nameof(GenConstruct.PlaceBlueprintForBuild));
             foreach (CodeInstruction instruction in instructions)
                 yield return (instruction.opcode == OpCodes.Call && instruction.operand == placeBlueprint) ? 
-                    new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(MinifyEverything), nameof(ReplaceBlueprintForBuild))) : 
+                    new CodeInstruction(opcode: OpCodes.Call, operand: AccessTools.Method(type: typeof(MinifyEverything), name: nameof(ReplaceBlueprintForBuild))) : 
                     instruction;
         }
 
@@ -220,28 +219,28 @@ namespace MinifyEverything
         {
             if (sourceDef is ThingDef td &&
                 td.Minifiable &&
-                map.listerThings.ThingsOfDef(td.minifiedDef).OfType<MinifiedThing>().Where(t => t.GetInnerIfMinified().Stuff == stuff).FirstOrDefault(m => map.reachability.CanReach(center, m, PathEndMode.Touch, TraverseMode.ByPawn, Danger.Deadly)) is MinifiedThing mini &&
-                !mini.IsForbidden(faction) && mini.GetInnerIfMinified().def == td &&
-                !map.reservationManager.IsReservedByAnyoneOf(mini, faction) &&
-                InstallBlueprintUtility.ExistingBlueprintFor(mini) == null)
+                map.listerThings.ThingsOfDef(def: td.minifiedDef).OfType<MinifiedThing>().Where(predicate: t => t.GetInnerIfMinified().Stuff == stuff).FirstOrDefault(predicate: m => map.reachability.CanReach(start: center, dest: m, peMode: PathEndMode.Touch, traverseMode: TraverseMode.ByPawn, maxDanger: Danger.Deadly)) is MinifiedThing mini &&
+                !mini.IsForbidden(faction: faction) && mini.GetInnerIfMinified().def == td &&
+                !map.reservationManager.IsReservedByAnyoneOf(target: mini, faction: faction) &&
+                InstallBlueprintUtility.ExistingBlueprintFor(th: mini) == null)
             {
-                return GenConstruct.PlaceBlueprintForInstall(mini, center, map, rotation, faction);
+                return GenConstruct.PlaceBlueprintForInstall(itemToInstall: mini, center: center, map: map, rotation: rotation, faction: faction);
             }
             else
-                return GenConstruct.PlaceBlueprintForBuild(sourceDef, center, map, rotation, faction, stuff);
+                return GenConstruct.PlaceBlueprintForBuild(sourceDef: sourceDef, center: center, map: map, rotation: rotation, faction: faction, stuff: stuff);
         }
 
         public static IEnumerable<CodeInstruction> InstallJobTranspiler(IEnumerable<CodeInstruction> instructions)
         {
             List<CodeInstruction> instructionList = instructions.ToList();
-            MethodInfo implicitConverter = AccessTools.Method(typeof(LocalTargetInfo), "op_Implicit", new Type[] { typeof(Pawn) });
+            MethodInfo implicitConverter = AccessTools.Method(type: typeof(LocalTargetInfo), name: "op_Implicit", parameters: new[] { typeof(Pawn) });
 
             for (int i = 0; i < instructionList.Count; i++)
             {
-                CodeInstruction instruction = instructionList[i];
+                CodeInstruction instruction = instructionList[index: i];
                 yield return instruction;
-                if (instruction.opcode == OpCodes.Call && instruction.operand == implicitConverter && instructionList[i + 1].opcode == OpCodes.Ldc_I4_1)
-                    instructionList[i + 1].opcode = OpCodes.Ldc_I4_2;
+                if (instruction.opcode == OpCodes.Call && instruction.operand == implicitConverter && instructionList[index: i + 1].opcode == OpCodes.Ldc_I4_1)
+                    instructionList[index: i + 1].opcode = OpCodes.Ldc_I4_2;
             }
         }
 
@@ -249,10 +248,10 @@ namespace MinifyEverything
         {
             createdThing = createdThing?.GetInnerIfMinified();
             if(createdThing is IThingHolder container)
-                Find.CameraDriver.StartCoroutine(DoStuff(() => container.GetDirectlyHeldThings().RemoveAll(t => t.GetInnerIfMinified() == null)));
+                Find.CameraDriver.StartCoroutine(routine: DoStuff(action: () => container.GetDirectlyHeldThings().RemoveAll(predicate: t => t.GetInnerIfMinified() == null)));
         }
 
-        static public IEnumerator DoStuff(Action action)
+        public static IEnumerator DoStuff(Action action)
         {
             yield return 500;
             action();
