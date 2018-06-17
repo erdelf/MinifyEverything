@@ -136,15 +136,10 @@ namespace MinifyEverything
     {
         static MinifyEverything()
         {   
-            minified = ThingDef.Named(defName: "MinifiedFurniture");
+            minified = ThingDef.Named(defName: "MinifiedThing");
             DefDatabase<ThingDef>.AllDefsListForReading.ForEach(action: td =>
             {
-                if(td.building != null && td.blueprintDef != null && !td.Minifiable)
-                {
-                        if(td.defName.Contains(value: "Bed"))
-                        Log.Message(text: "hey");
-                    AddMinifiedFor(def: td);
-                }
+                if(td.building != null && td.blueprintDef != null && !td.Minifiable) AddMinifiedFor(def: td);
             });
             MinifyMod.instance.Settings.disabledDefList.ForEach(action: RemoveMinifiedFor);
             HarmonyInstance harmony = HarmonyInstance.Create(id: "rimworld.erdelf.minify_everything");
