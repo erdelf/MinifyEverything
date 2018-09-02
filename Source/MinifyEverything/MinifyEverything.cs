@@ -137,10 +137,24 @@ namespace MinifyEverything
         static MinifyEverything()
         {   
             minified = ThingDef.Named(defName: "MinifiedThing");
+
+            ThingCategoryDef category = ThingCategoryDef.Named(defName: "BuildingsMisc");
+
             DefDatabase<ThingDef>.AllDefsListForReading.ForEach(action: td =>
             {
-                if(td.building != null && td.blueprintDef != null && !td.Minifiable) AddMinifiedFor(def: td);
+                if (td.building == null || td.blueprintDef == null) return;
+                if (td.thingCategories == null)
+                {
+                    td.thingCategories = new List<ThingCategoryDef> {category};
+                    category.childThingDefs.Add(item: td);
+                }
+
+                if (!td.Minifiable)
+                    AddMinifiedFor(def: td);
             });
+
+            
+
             MinifyMod.instance.Settings.disabledDefList.ForEach(action: RemoveMinifiedFor);
             HarmonyInstance harmony = HarmonyInstance.Create(id: "rimworld.erdelf.minify_everything");
             harmony.Patch(original: AccessTools.Method(type: typeof(Blueprint_Install), name: nameof(Blueprint_Install.TryReplaceWithSolidThing)), prefix: null, postfix: new HarmonyMethod(type: typeof(MinifyEverything), name: nameof(AfterInstall)));
