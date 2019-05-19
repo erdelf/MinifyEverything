@@ -256,8 +256,13 @@ namespace MinifyEverything
         public static void AfterInstall(Thing createdThing)
         {
             createdThing = createdThing?.GetInnerIfMinified();
-            if(createdThing is IThingHolder container)
-                Find.CameraDriver.StartCoroutine(routine: DoStuff(action: () => container.GetDirectlyHeldThings().RemoveAll(predicate: t => t.GetInnerIfMinified() == null)));
+            if (createdThing != null)
+                Find.CameraDriver.StartCoroutine(routine: DoStuff(action: () =>
+                                                                          {
+                                                                              if (createdThing is IThingHolder container)
+                                                                                  container.GetDirectlyHeldThings().RemoveAll(predicate: t => t.GetInnerIfMinified() == null);
+                                                                              createdThing.SpawnSetup(map: createdThing.Map, respawningAfterLoad: false);
+                                                                          }));
         }
 
         public static IEnumerator DoStuff(Action action)
