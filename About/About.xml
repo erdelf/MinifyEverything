@@ -2,7 +2,7 @@
 <ModMetaData>
   <name>MinifyEverything</name>
   <author>erdelf</author>
-  <targetVersion>0.19.0</targetVersion>
+  <supportedVersions><li>1.1</li></supportedVersions>
   <description>
 You want to minify every building ? Well then you came to the right place 
 
