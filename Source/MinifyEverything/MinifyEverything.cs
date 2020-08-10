@@ -156,21 +156,21 @@ namespace MinifyEverything
             ThingCategoryDef category = ThingCategoryDef.Named(defName: "BuildingsMisc");
 
             IEnumerable<ThingDef> toPatch = DefDatabase<ThingDef>.AllDefsListForReading.Where(td =>
-                                                                                                    {
-                                                                                                        if (!td.Claimable || td.graphicData == null) 
-                                                                                                            return false;
-                                                                                                        if (td.thingCategories == null)
-                                                                                                        {
-                                                                                                            td.thingCategories = new List<ThingCategoryDef> {category};
-                                                                                                            category.childThingDefs.Add(item: td);
-                                                                                                        }
-                                                                                                        return !td.Minifiable;
-                                                                                                    });
-            foreach (ThingDef thingDef in toPatch.ToHashSet())
-            {
-                AddMinifiedFor(def: thingDef);
-            }
+                                                                                              {
+                                                                                                  if (td.defName.StartsWith("Smooth"))
+                                                                                                      return false;
 
+                                                                                                  if (!td.Claimable || td.graphicData == null || td.building.isNaturalRock)
+                                                                                                      return false;
+                                                                                                  if (td.thingCategories == null && !td.building.isNaturalRock)
+                                                                                                  {
+                                                                                                      td.thingCategories = new List<ThingCategoryDef> {category};
+                                                                                                      category.childThingDefs.Add(item: td);
+                                                                                                  }
+                                                                                                  return !td.Minifiable;
+                                                                                            });
+            foreach (ThingDef thingDef in toPatch.ToHashSet()) 
+                AddMinifiedFor(def: thingDef);
 
 
             MinifyMod.instance.Settings.disabledDefList.ForEach(action: RemoveMinifiedFor);

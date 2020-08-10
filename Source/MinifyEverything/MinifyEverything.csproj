@@ -46,6 +46,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Optimize>false</Optimize>
     <Prefer32Bit>false</Prefer32Bit>
+    <OutputPath>..\..\1.1\Assemblies\</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
     <OutputPath>..\..\Assemblies\</OutputPath>
