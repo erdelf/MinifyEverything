@@ -147,7 +147,7 @@ namespace MinifyEverything
     }
 
     [StaticConstructorOnStartup]
-    internal static class MinifyEverything
+    public static class MinifyEverything
     {
         static MinifyEverything()
         {
