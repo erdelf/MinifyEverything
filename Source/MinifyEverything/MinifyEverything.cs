@@ -28,6 +28,8 @@ namespace MinifyEverything
     [StaticConstructorOnStartup]
     internal class MinifyMod : Mod
     {
+        public static bool listHandledByOtherMod = false;
+
         public static MinifyMod      instance;
         private       MinifySettings settings;
         private       Vector2        leftScrollPosition;
@@ -153,27 +155,31 @@ namespace MinifyEverything
         {
             minified = ThingDef.Named(defName: "MinifiedThing");
 
-            ThingCategoryDef category = ThingCategoryDef.Named(defName: "BuildingsMisc");
+            if (!MinifyMod.listHandledByOtherMod)
+            {
+                ThingCategoryDef category = ThingCategoryDef.Named(defName: "BuildingsMisc");
 
-            IEnumerable<ThingDef> toPatch = DefDatabase<ThingDef>.AllDefsListForReading.Where(td =>
-                                                                                              {
-                                                                                                  if (td.defName.StartsWith("Smooth"))
-                                                                                                      return false;
-
-                                                                                                  if (!td.Claimable || td.graphicData == null || td.building.isNaturalRock)
-                                                                                                      return false;
-                                                                                                  if (td.thingCategories == null && !td.building.isNaturalRock)
+                IEnumerable<ThingDef> toPatch = DefDatabase<ThingDef>.AllDefsListForReading.Where(td =>
                                                                                                   {
-                                                                                                      td.thingCategories = new List<ThingCategoryDef> {category};
-                                                                                                      category.childThingDefs.Add(item: td);
-                                                                                                  }
-                                                                                                  return !td.Minifiable;
-                                                                                            });
-            foreach (ThingDef thingDef in toPatch.ToHashSet()) 
-                AddMinifiedFor(def: thingDef);
+                                                                                                      if (td.defName.StartsWith("Smooth"))
+                                                                                                          return false;
 
+                                                                                                      if (!td.Claimable || td.graphicData == null || td.building.isNaturalRock)
+                                                                                                          return false;
+                                                                                                      if (td.thingCategories == null && !td.building.isNaturalRock)
+                                                                                                      {
+                                                                                                          td.thingCategories = new List<ThingCategoryDef> { category };
+                                                                                                          category.childThingDefs.Add(item: td);
+                                                                                                      }
 
-            MinifyMod.instance.Settings.disabledDefList.ForEach(action: RemoveMinifiedFor);
+                                                                                                      return !td.Minifiable;
+                                                                                                  });
+                foreach (ThingDef thingDef in toPatch.ToHashSet())
+                    AddMinifiedFor(def: thingDef);
+
+                MinifyMod.instance.Settings.disabledDefList.ForEach(action: RemoveMinifiedFor);
+            }
+
             Harmony harmony = new Harmony(id: "rimworld.erdelf.minify_everything");
             harmony.Patch(original: AccessTools.Method(type: typeof(Blueprint_Install), name: nameof(Blueprint_Install.TryReplaceWithSolidThing)), prefix: null,
                           postfix: new HarmonyMethod(methodType: typeof(MinifyEverything), methodName: nameof(AfterInstall)));
