@@ -190,24 +190,28 @@ namespace MinifyEverything
                           prefix: new HarmonyMethod(methodType: typeof(MinifyEverything), methodName: nameof(JobOnThingPrefix)), postfix: null);
         }
 
-        private static readonly MethodInfo shortHashGiver = AccessTools.Method(type: typeof(ShortHashGiver), name: "GiveShortHash");
+        private delegate        void          GiveShortHash(Def def, Type defType, HashSet<ushort> takenHashes);
+        private static readonly GiveShortHash giveShortHash = AccessTools.MethodDelegate<GiveShortHash>(AccessTools.Method(type: typeof(ShortHashGiver), name: "GiveShortHash"));
+
         private static readonly ThingDef   minified;
 
-        private static readonly MethodInfo blueprintInfo = AccessTools.Method(typeof(ThingDefGenerator_Buildings), "NewBlueprintDef_Thing");
+        private delegate        ThingDef              NewBlueprintDef_Thing(ThingDef def, bool isInstallBlueprint, ThingDef normalBlueprint = null);
+        private static readonly NewBlueprintDef_Thing blueprintGen = AccessTools.MethodDelegate<NewBlueprintDef_Thing>(AccessTools.Method(typeof(ThingDefGenerator_Buildings), "NewBlueprintDef_Thing"));
+
+        public static readonly AccessTools.FieldRef<Dictionary<Type, HashSet<ushort>>> takenShortHashes =
+            AccessTools.StaticFieldRefAccess<Dictionary<Type, HashSet<ushort>>>(AccessTools.Field(typeof(ShortHashGiver), "takenHashesPerDeftype"));
 
         public static void AddMinifiedFor(ThingDef def)
         {
             def.minifiedDef = minified;
 
-            
-
             if (def.blueprintDef == null)
-                blueprintInfo.Invoke(null, new object[] {def, false, null});
-            ThingDef minifiedDef = (ThingDef) blueprintInfo.Invoke(null, new object[] {def, true, def.blueprintDef});
+                blueprintGen(def, false);
+            ThingDef minifiedDef = blueprintGen(def, true, def.blueprintDef);
             minifiedDef.deepCommonality = 0f;
             minifiedDef.ResolveReferences();
             minifiedDef.PostLoad();
-            shortHashGiver.Invoke(obj: null, parameters: new object[] {minifiedDef, typeof(ThingDef)});
+            giveShortHash(minifiedDef, typeof(ThingDef), takenShortHashes()[typeof(ThingDef)]);
             //Log.Message(minifiedDef.defName);
             DefDatabase<ThingDef>.Add(def: minifiedDef);
         }
@@ -257,7 +261,7 @@ namespace MinifyEverything
         {
             MethodInfo placeBlueprint = AccessTools.Method(type: typeof(GenConstruct), name: nameof(GenConstruct.PlaceBlueprintForBuild));
             foreach (CodeInstruction instruction in instructions)
-                yield return (instruction.opcode == OpCodes.Call && instruction.operand == placeBlueprint)
+                yield return (instruction.Calls(placeBlueprint))
                                  ? new CodeInstruction(opcode: OpCodes.Call, operand: AccessTools.Method(type: typeof(MinifyEverything), name: nameof(ReplaceBlueprintForBuild)))
                                  : instruction;
         }
@@ -288,12 +292,10 @@ namespace MinifyEverything
             {
                 CodeInstruction instruction = instructionList[index: i];
                 yield return instruction;
-                if (instruction.opcode == OpCodes.Call && instruction.operand == implicitConverter && instructionList[index: i + 1].opcode == OpCodes.Ldc_I4_1)
+                if (instruction.Calls(implicitConverter) && instructionList[index: i + 1].opcode == OpCodes.Ldc_I4_1)
                     instructionList[index: i                                                                                   + 1].opcode = OpCodes.Ldc_I4_2;
             }
         }
-
-        private static readonly AccessTools.FieldRef<Thing, sbyte> mapIndexRef = AccessTools.FieldRefAccess<Thing, sbyte>("mapIndexOrState");
 
         public static void AfterInstall(Thing createdThing)
         {
