@@ -298,18 +298,18 @@ namespace MinifyEverything
         }
 
         public static void AfterInstall(Thing createdThing)
-        {
-            createdThing = createdThing?.GetInnerIfMinified();
-            if (createdThing != null)
+        { 
+            Thing innerThing = createdThing?.GetInnerIfMinified();
+            if (innerThing != createdThing)
                 Find.CameraDriver.StartCoroutine(routine: DoStuff(action: () =>
                                                                           {
-                                                                              if (createdThing is IThingHolder container)
+                                                                              if (innerThing is IThingHolder container)
                                                                                   container.GetDirectlyHeldThings().RemoveAll(predicate: t => t.GetInnerIfMinified() == null);
-                                                                              IntVec3 loc = createdThing.Position;
-                                                                              Map map = createdThing.Map;
-                                                                              Rot4 rotation = createdThing.Rotation;
-                                                                              createdThing.DeSpawn();
-                                                                              Find.CameraDriver.StartCoroutine(DoStuff(() => GenSpawn.Spawn(createdThing, loc, map, rotation)));
+                                                                              IntVec3 loc = innerThing.Position;
+                                                                              Map map = innerThing.Map;
+                                                                              Rot4 rotation = innerThing.Rotation;
+                                                                              innerThing.DeSpawn();
+                                                                              Find.CameraDriver.StartCoroutine(DoStuff(() => GenSpawn.Spawn(innerThing, loc, map, rotation)));
                                                                               //createdThing.SpawnSetup(map, false);
                                                                           }));
         }
