@@ -195,7 +195,7 @@ namespace MinifyEverything
 
         private static readonly ThingDef   minified;
 
-        private delegate        ThingDef              NewBlueprintDef_Thing(ThingDef def, bool isInstallBlueprint, ThingDef normalBlueprint = null);
+        private delegate        ThingDef              NewBlueprintDef_Thing(ThingDef def, bool isInstallBlueprint, ThingDef normalBlueprint = null, bool hotReload = false);
         private static readonly NewBlueprintDef_Thing blueprintGen = AccessTools.MethodDelegate<NewBlueprintDef_Thing>(AccessTools.Method(typeof(ThingDefGenerator_Buildings), "NewBlueprintDef_Thing"));
 
         public static readonly AccessTools.FieldRef<Dictionary<Type, HashSet<ushort>>> takenShortHashes =
