@@ -47,7 +47,7 @@ namespace MinifyEverything
             Harmony harmony = new("rimworld.erdelf.minify_everything");
 
             harmony.Patch(AccessTools.Method(typeof(DefGenerator), nameof(DefGenerator.GenerateImpliedDefs_PreResolve)), 
-                                           prefix: new HarmonyMethod(typeof(MinifyEverything), nameof(MinifyEverything.GenerateImpliedDefsPrefix)));
+                                           postfix: new HarmonyMethod(typeof(MinifyEverything), nameof(MinifyEverything.GenerateImpliedDefsPostfix)));
 
             harmony.Patch(AccessTools.Method(typeof(Blueprint_Install), nameof(Blueprint_Install.TryReplaceWithSolidThing)),
                           postfix: new HarmonyMethod(typeof(MinifyEverything), nameof(MinifyEverything.AfterInstall)));
@@ -176,7 +176,7 @@ namespace MinifyEverything
         public static readonly AccessTools.FieldRef<Dictionary<Type, HashSet<ushort>>> takenShortHashes =
             AccessTools.StaticFieldRefAccess<Dictionary<Type, HashSet<ushort>>>(AccessTools.Field(typeof(ShortHashGiver), "takenHashesPerDeftype"));
 
-        public static void AddMinifiedFor(ThingDef def)
+        public static void AddMinifiedFor(ThingDef def, bool hash = true)
         {
             def.minifiedDef = minified;
 
@@ -189,9 +189,16 @@ namespace MinifyEverything
             minifiedDef.deepCommonality = 0f;
             minifiedDef.ResolveReferences();
             minifiedDef.PostLoad();
-            giveShortHash(minifiedDef, typeof(ThingDef), takenShortHashes()[typeof(ThingDef)]);
+            if(hash)
+                giveShortHash(minifiedDef, typeof(ThingDef), takenShortHashes()[typeof(ThingDef)]);
             //Log.Message(minifiedDef.defName);
             DefDatabase<ThingDef>.Add(minifiedDef);
+        }
+
+        [Obsolete]
+        public static void AddMinifiedFor(ThingDef def)
+        {
+            AddMinifiedFor(def, true);
         }
 
         public static void RemoveMinifiedFor(ThingDef def)
@@ -204,7 +211,7 @@ namespace MinifyEverything
             }
         }
 
-        public static void GenerateImpliedDefsPrefix()
+        public static void GenerateImpliedDefsPostfix()
         {
             minified        = ThingDef.Named("MinifiedThing");
             defaultCategory = ThingCategoryDef.Named("BuildingsMisc");
@@ -227,11 +234,13 @@ namespace MinifyEverything
                     return !td.Minifiable;
                 });
 
+                takenShortHashes().Add(typeof(ThingDef), []);
+
                 foreach (ThingDef thingDef in toPatch.ToHashSet())
-                    thingDef.minifiedDef = minified;
+                    AddMinifiedFor(thingDef, false);
 
                 foreach (ThingDef thingDef in MinifyMod.instance.Settings.disabledDefList) 
-                    thingDef.minifiedDef = null;
+                    RemoveMinifiedFor(thingDef);
             }
         }
 
