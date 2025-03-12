@@ -46,6 +46,7 @@ namespace MinifyEverything
             instance = this;
             Harmony harmony = new("rimworld.erdelf.minify_everything");
 
+            harmony.Patch(AccessTools.Method(typeof(MinifiedThing), "get_Graphic"), prefix: new HarmonyMethod(typeof(MinifyEverything), nameof(MinifyEverything.MinifiedThingGetGraphic)));
             harmony.Patch(AccessTools.Method(typeof(DefGenerator), nameof(DefGenerator.GenerateImpliedDefs_PreResolve)), 
                                            postfix: new HarmonyMethod(typeof(MinifyEverything), nameof(MinifyEverything.GenerateImpliedDefsPostfix)));
 
@@ -176,6 +177,30 @@ namespace MinifyEverything
         public static readonly AccessTools.FieldRef<Dictionary<Type, HashSet<ushort>>> takenShortHashes =
             AccessTools.StaticFieldRefAccess<Dictionary<Type, HashSet<ushort>>>(AccessTools.Field(typeof(ShortHashGiver), "takenHashesPerDeftype"));
 
+        private static readonly AccessTools.FieldRef<MinifiedThing, Graphic> cachedGraphic = AccessTools.FieldRefAccess<MinifiedThing, Graphic>("cachedGraphic");
+		
+        public static bool MinifiedThingGetGraphic(MinifiedThing __instance, ref Graphic __result)
+        {
+	        ref var cache = ref cachedGraphic(__instance);
+	        if (cache != null)
+	        {
+		        __result = cache;
+                return false;
+	        }
+
+	        try
+	        {
+		        _ = __instance.InnerThing.Graphic;
+		        return true;
+	        }
+	        catch (Exception)
+	        {
+		        cache = __instance.InnerThing.DefaultGraphic;
+		        __result = cache;
+		        return false;
+            }
+        }
+
         public static void AddMinifiedFor(ThingDef def, bool hash = true)
         {
             def.minifiedDef = minified;
@@ -213,7 +238,7 @@ namespace MinifyEverything
 
         public static void GenerateImpliedDefsPostfix()
         {
-            minified        = ThingDef.Named("MinifiedThing");
+            minified        = ThingDefOf.MinifiedThing;
             defaultCategory = ThingCategoryDef.Named("BuildingsMisc");
 
             if (!MinifyMod.listHandledByOtherMod)
@@ -255,8 +280,8 @@ namespace MinifyEverything
                 if (td.designationCategory != null)
                 {
                     ThingCategoryDef categoryDef = DefDatabase<ThingCategoryDef>.GetNamedSilentFail("Buildings" + td.designationCategory.defName);
-                    if(categoryDef != null) 
-                        category = categoryDef;
+                    if (categoryDef != null)
+	                    category = categoryDef;
                 }
 
                 td.thingCategories.Add(category);
