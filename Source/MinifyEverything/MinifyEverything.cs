@@ -274,7 +274,7 @@ namespace MinifyEverything
                     Def sourceDef = bb.def.entityDefToBuild;
 
                     if (sourceDef is ThingDef { Minifiable: true } td &&
-                        t.Map.listerThings.ThingsOfDef(td.minifiedDef).OfType<MinifiedThing>().Where(mf => mf.GetInnerIfMinified().Stuff == bb.stuffToUse)
+                        t.Map.listerThings.ThingsMatching(ThingRequest.ForGroup(ThingRequestGroup.MinifiedThing)).OfType<MinifiedThing>().Where(mf => mf.GetInnerIfMinified().Stuff == bb.stuffToUse)
                          .FirstOrDefault(m => pawn.CanReserveAndReach(m, PathEndMode.Touch, Danger.Deadly)) is { } mini &&
                         !mini.IsForbidden(pawn.Faction) && mini.GetInnerIfMinified().def == td && InstallBlueprintUtility.ExistingBlueprintFor(mini) == null)
                     {
@@ -307,7 +307,7 @@ namespace MinifyEverything
         public static Blueprint ReplaceBlueprintForBuild(BuildableDef sourceDef, IntVec3 center, Map map, Rot4 rotation, Faction faction, ThingDef stuff)
         {
             if (sourceDef is ThingDef { Minifiable: true } td &&
-                map.listerThings.ThingsOfDef(td.minifiedDef).OfType<MinifiedThing>().Where(t => t.GetInnerIfMinified().Stuff == stuff)
+                map.listerThings.ThingsMatching(ThingRequest.ForGroup(ThingRequestGroup.MinifiedThing)).OfType<MinifiedThing>().Where(t => t.GetInnerIfMinified().Stuff == stuff)
                    .FirstOrDefault(m => map.reachability.CanReach(center, m, PathEndMode.Touch, TraverseMode.ByPawn, Danger.Deadly)) is { } mini &&
                 !mini.IsForbidden(faction)                                                                                                       && mini.GetInnerIfMinified().def == td &&
                 !map.reservationManager.IsReservedByAnyoneOf(mini, faction)                                                                      &&
