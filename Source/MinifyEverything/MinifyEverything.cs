@@ -57,6 +57,13 @@ namespace MinifyEverything
             harmony.Patch(AccessTools.Method(typeof(WorkGiver_ConstructDeliverResourcesToBlueprints), nameof(WorkGiver_Scanner.JobOnThing)),
                           new HarmonyMethod(typeof(MinifyEverything), nameof(MinifyEverything.JobOnThingPrefix)));
             harmony.Patch(AccessTools.EnumeratorMoveNext(AccessTools.Method(typeof(ThingDef), nameof(ThingDef.ConfigErrors))), transpiler: new HarmonyMethod(typeof(MinifyEverything), nameof(MinifyEverything.ConfigErrorTranspiler)));
+            harmony.Patch(typeof(ShortHashGiver).FindIncludingInnerTypes((Type type) =>
+                              AccessTools.FirstMethod(type, (MethodInfo method) =>
+                                  method.Name.Contains(nameof(ShortHashGiver.GiveAllShortHashes)) &&
+                                  !method.Name.Equals(nameof(ShortHashGiver.GiveAllShortHashes)) &&
+                                  method.GetParameters().Length == 1 &&
+                                  method.GetParameters()[0].ParameterType.IsEquivalentTo(typeof(ValueTuple<Type, HashSet<ushort>>)))),
+                          transpiler: new HarmonyMethod(typeof(MinifyEverything), nameof(MinifyEverything.GiveAllShortHashesTranspiler)));
         }
 
         internal MinifySettings Settings => this.settings ??= this.GetSettings<MinifySettings>();
@@ -178,7 +185,12 @@ namespace MinifyEverything
             AccessTools.StaticFieldRefAccess<Dictionary<Type, HashSet<ushort>>>(AccessTools.Field(typeof(ShortHashGiver), "takenHashesPerDeftype"));
 
         private static readonly AccessTools.FieldRef<MinifiedThing, Graphic> cachedGraphic = AccessTools.FieldRefAccess<MinifiedThing, Graphic>("cachedGraphic");
-		
+
+        // We collect a set of names of ThingDefs we create.
+        private static HashSet<string> thisModsDefNames = [];
+
+        private static Func<Def, bool> testIfOurDef = TestIfOurDef;
+
         public static bool MinifiedThingGetGraphic(MinifiedThing __instance, ref Graphic __result)
         {
 	        ref var cache = ref cachedGraphic(__instance);
@@ -206,7 +218,12 @@ namespace MinifyEverything
             def.minifiedDef = minified;
 
             if (def.blueprintDef == null)
+            {
                 blueprintGen(def, false);
+
+                // the blueprintGen method creates a new def as well.
+                thisModsDefNames.Add(def.defName);
+            }
 
             //AddCategoriesIfNeeded(def, true);
 
@@ -216,6 +233,7 @@ namespace MinifyEverything
             minifiedDef.PostLoad();
             if(hash)
                 giveShortHash(minifiedDef, typeof(ThingDef), takenShortHashes()[typeof(ThingDef)]);
+            thisModsDefNames.Add(minifiedDef.defName);
             //Log.Message(minifiedDef.defName);
             DefDatabase<ThingDef>.Add(minifiedDef);
         }
@@ -318,6 +336,49 @@ namespace MinifyEverything
             }
 
             return true;
+        }
+
+        public static bool TestIfOurDef(Def def)
+        {
+            return thisModsDefNames.Contains(def.defName);
+        }
+
+        public static IEnumerable<CodeInstruction> GiveAllShortHashesTranspiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var method1 = AccessTools.GetDeclaredMethods(typeof(GenCollection)).FirstOrDefault((MethodInfo x) =>
+                    x.Name.Equals(nameof(GenCollection.SortBy)) &&
+                    x.GetGenericArguments().Length == 2 &&
+                    x.GetParameters().Length == 2
+                )?.MakeGenericMethod([typeof(Def), typeof(string)]);
+
+            if (method1 == null)
+            {
+                Log.Error($"Failed to find the method GenCollection.SortBy<T, TSortBy>(this List<T>, Func<T, TSoryBy>)");
+                return instructions;
+            }
+
+            var method2 = AccessTools.GetDeclaredMethods(typeof(GenCollection)).FirstOrDefault((MethodInfo x) =>
+                    x.Name.Equals(nameof(GenCollection.SortBy)) &&
+                    x.GetGenericArguments().Length == 3 &&
+                    x.GetParameters().Length == 3
+                )?.MakeGenericMethod([typeof(Def), typeof(bool), typeof(string)]);
+
+            if (method2 == null)
+            {
+                Log.Error($"Failed to find the method GenCollection.SortBy<T, TSortBy, TThenBy>(this List<T>, Func<T, TSoryBy>, Func<T, TThenBy>)");
+                return instructions;
+            }
+
+            var codeMatcher = new CodeMatcher(instructions)
+              .MatchStartForward([CodeMatch.Calls(method1)])
+              .ThrowIfNotMatch($"Failed to match in match pattern #1 of transpiler {nameof(GiveAllShortHashesTranspiler)}.");
+            var labels = codeMatcher.Instruction.ExtractLabels();
+            return codeMatcher.SetInstruction(new CodeInstruction(OpCodes.Call, method2).WithLabels(labels))
+              .MatchStartBackwards([CodeMatch.WithOpcodes([OpCodes.Ldloc_3])])
+              .ThrowIfNotMatch($"Failed to match in match pattern #2 of transpiler {nameof(GiveAllShortHashesTranspiler)}.")
+              .Advance(1)
+              .Insert([CodeInstruction.LoadField(typeof(MinifyEverything), nameof(testIfOurDef))])
+              .Instructions();
         }
 
         public static IEnumerable<CodeInstruction> DesignateSingleCellTranspiler(IEnumerable<CodeInstruction> instructions)
