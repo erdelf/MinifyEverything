@@ -226,12 +226,6 @@ namespace MinifyEverything
             DefDatabase<ThingDef>.Add(minifiedDef);
         }
 
-        [Obsolete]
-        public static void AddMinifiedFor(ThingDef def)
-        {
-            AddMinifiedFor(def, true);
-        }
-
         public static void RemoveMinifiedFor(ThingDef def)
         {
             ThingDef td = ThingDef.Named(ThingDefGenerator_Buildings.BlueprintDefNamePrefix + ThingDefGenerator_Buildings.InstallBlueprintDefNamePrefix + def.defName);
