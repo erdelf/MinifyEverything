@@ -227,7 +227,7 @@ namespace MinifyEverything
         }
 
         public static void RemoveMinifiedFor(ThingDef def)
-        {
+        { 
             ThingDef td = ThingDef.Named(ThingDefGenerator_Buildings.BlueprintDefNamePrefix + ThingDefGenerator_Buildings.InstallBlueprintDefNamePrefix + def.defName);
             if (td != null)
             {
@@ -243,13 +243,23 @@ namespace MinifyEverything
 
             if (!MinifyMod.listHandledByOtherMod)
             {
+                ThingDef[] notPatching            = [ThingDefOf.VoidMonolith, ThingDefOf.ShipChunk, ThingDefOf.Turret_AncientArmoredTurret, ThingDefOf.HunterDroneTrap, ThingDefOf.WaspDroneTrap];
+                ThingDef[] notAlwaysUninstallable = [];
+
                 IEnumerable<ThingDef> toPatch = DefDatabase<ThingDef>.AllDefsListForReading.Where(td =>
                 {
+                    if (notPatching.Contains(td))
+                        return false;
+
                     if (td.defName.StartsWith("Smooth"))
                         return false;
 
-                    if (!td.Claimable || td.graphicData == null || td.building.isNaturalRock)
+                    if (td.graphicData == null || td.building == null || td.building.isNaturalRock)
                         return false;
+
+                    if (!td.building.claimable && !notAlwaysUninstallable.Contains(td))
+                        td.building.alwaysUninstallable = true;
+
 
                     AddCategoriesIfNeeded(td, false);
 
