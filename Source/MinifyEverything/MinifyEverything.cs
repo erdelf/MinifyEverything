@@ -16,6 +16,7 @@ namespace MinifyEverything
 
     internal class MinifySettings : ModSettings
     {
+        public bool           tickMinified    = false;
         public List<ThingDef> disabledDefList = [];
 
         public override void ExposeData()
@@ -24,6 +25,8 @@ namespace MinifyEverything
             List<string> list = this.disabledDefList?.Select(td => td.defName).ToList() ?? [];
             Scribe_Collections.Look(ref list, "disabledDefList");
             this.disabledDefList = list.Select(DefDatabase<ThingDef>.GetNamedSilentFail).Where(td => td != null).ToList();
+
+            Scribe_Values.Look(ref this.tickMinified, nameof(this.tickMinified));
         }
     }
 
@@ -57,6 +60,7 @@ namespace MinifyEverything
             harmony.Patch(AccessTools.Method(typeof(WorkGiver_ConstructDeliverResourcesToBlueprints), nameof(WorkGiver_Scanner.JobOnThing)),
                           new HarmonyMethod(typeof(MinifyEverything), nameof(MinifyEverything.JobOnThingPrefix)));
             harmony.Patch(AccessTools.EnumeratorMoveNext(AccessTools.Method(typeof(ThingDef), nameof(ThingDef.ConfigErrors))), transpiler: new HarmonyMethod(typeof(MinifyEverything), nameof(MinifyEverything.ConfigErrorTranspiler)));
+            harmony.Patch(AccessTools.Method(typeof(ThingOwner), nameof(ThingOwner.DoTick)), new HarmonyMethod(typeof(MinifyEverything), nameof(MinifyEverything.ThingOwnerTickPrefix)));
         }
 
         internal MinifySettings Settings => this.settings ??= this.GetSettings<MinifySettings>();
@@ -66,9 +70,11 @@ namespace MinifyEverything
             base.DoSettingsWindowContents(inRect);
             Text.Font = GameFont.Medium;
             Rect topRect = inRect.TopPart(0.05f);
-            this.searchTerm = Widgets.TextField(topRect.RightPart(0.95f).LeftPart(0.95f), this.searchTerm);
-            Rect labelRect  = inRect.TopPart(0.1f).BottomHalf();
-            Rect bottomRect = inRect.BottomPart(0.9f);
+            Widgets.CheckboxLabeled(topRect, "Tick minified buildings", ref this.Settings.tickMinified);
+            topRect.y       += topRect.height;
+            this.searchTerm =  Widgets.TextField(topRect.RightPart(0.95f).LeftPart(0.95f), this.searchTerm);
+            Rect labelRect  = inRect.TopPart(0.2f).BottomHalf();
+            Rect bottomRect = inRect.BottomPart(0.85f);
 
         #region leftSide
 
@@ -358,21 +364,26 @@ namespace MinifyEverything
             }
         }
 
+        public static bool ThingOwnerTickPrefix(IThingHolder ___owner) => 
+            ___owner is not MinifiedThing || MinifyMod.instance.Settings.tickMinified;
+
         public static void AfterInstall(Thing createdThing)
         { 
             Thing innerThing = createdThing?.GetInnerIfMinified();
             if (innerThing != createdThing)
+            {
                 Find.CameraDriver.StartCoroutine(DoStuff(() =>
-                                                                          {
-                                                                              if (innerThing is IThingHolder container)
-                                                                                  container.GetDirectlyHeldThings().RemoveAll(t => t.GetInnerIfMinified() == null);
-                                                                              IntVec3 loc = innerThing.Position;
-                                                                              Map map = innerThing.Map;
-                                                                              Rot4 rotation = innerThing.Rotation;
-                                                                              innerThing.DeSpawn();
-                                                                              Find.CameraDriver.StartCoroutine(DoStuff(() => GenSpawn.Spawn(innerThing, loc, map, rotation)));
-                                                                              //createdThing.SpawnSetup(map, false);
-                                                                          }));
+                                                         {
+                                                             if (innerThing is IThingHolder container)
+                                                                 container.GetDirectlyHeldThings().RemoveAll(t => t.GetInnerIfMinified() == null);
+                                                             IntVec3 loc      = innerThing.Position;
+                                                             Map     map      = innerThing.Map;
+                                                             Rot4    rotation = innerThing.Rotation;
+                                                             innerThing.DeSpawn();
+                                                             Find.CameraDriver.StartCoroutine(DoStuff(() => GenSpawn.Spawn(innerThing, loc, map, rotation)));
+                                                             //createdThing.SpawnSetup(map, false);
+                                                         }));
+            }
         }
 
         public static IEnumerable<CodeInstruction> ConfigErrorTranspiler(IEnumerable<CodeInstruction> instructions)
