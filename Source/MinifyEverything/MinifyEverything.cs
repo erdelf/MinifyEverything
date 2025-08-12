@@ -228,7 +228,7 @@ namespace MinifyEverything
 
         public static void RemoveMinifiedFor(ThingDef def)
         { 
-            ThingDef td = ThingDef.Named(ThingDefGenerator_Buildings.BlueprintDefNamePrefix + ThingDefGenerator_Buildings.InstallBlueprintDefNamePrefix + def.defName);
+            ThingDef td = DefDatabase<ThingDef>.GetNamedSilentFail(ThingDefGenerator_Buildings.BlueprintDefNamePrefix + ThingDefGenerator_Buildings.InstallBlueprintDefNamePrefix + def.defName);
             if (td != null)
             {
                 Traverse.Create(typeof(DefDatabase<ThingDef>)).Method("Remove", [typeof(ThingDef)]).GetValue(td);
