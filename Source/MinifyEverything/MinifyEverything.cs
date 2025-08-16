@@ -262,7 +262,8 @@ namespace MinifyEverything
                     if (td.defName.StartsWith("Smooth"))
                         return false;
 
-                    if (td.graphicData == null || td.building == null || td.building.isNaturalRock || td.GetStatValueAbstract(StatDefOf.WorkToBuild) <= 0)
+                    if (td.graphicData == null || td.building == null || td.building.isNaturalRock || td.GetStatValueAbstract(StatDefOf.WorkToBuild) <= 0 ||
+                        td.building.mineableThing != null)
                         return false;
 
                     if (!td.building.claimable && !notAlwaysUninstallable.Contains(td))
