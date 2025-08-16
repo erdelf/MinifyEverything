@@ -243,12 +243,20 @@ namespace MinifyEverything
 
             if (!MinifyMod.listHandledByOtherMod)
             {
-                ThingDef[] notPatching            = [ThingDefOf.VoidMonolith, ThingDefOf.ShipChunk, ThingDefOf.Turret_AncientArmoredTurret, ThingDefOf.HunterDroneTrap, ThingDefOf.WaspDroneTrap];
-                ThingDef[] notAlwaysUninstallable = [];
+                HashSet<ThingDef> notPatching =
+                [
+                    ThingDefOf.VoidMonolith, ThingDefOf.ShipChunk, ThingDefOf.Turret_AncientArmoredTurret, ThingDefOf.HunterDroneTrap, ThingDefOf.WaspDroneTrap,
+                    ThingDefOf.SteamGeyser, ThingDefOf.GeothermalVent, ThingDefOf.AncientSmokeVent, ThingDefOf.AncientToxVent, ThingDefOf.MechCapsule, ThingDefOf.AncientExostriderRemains
+                ];
+                HashSet<string> notPatchingDefName =
+                [
+                    "MechAssembler"
+                ];
+                HashSet<ThingDef> notAlwaysUninstallable = [];
 
                 IEnumerable<ThingDef> toPatch = DefDatabase<ThingDef>.AllDefsListForReading.Where(td =>
                 {
-                    if (notPatching.Contains(td))
+                    if (notPatching.Contains(td) || notPatchingDefName.Contains(td.defName))
                         return false;
 
                     if (td.defName.StartsWith("Smooth"))
