@@ -410,10 +410,13 @@ namespace MinifyEverything
             {
                 CodeInstruction instruction = instructionList[index];
 
-                yield return instruction;
-
                 if (instruction.opcode == OpCodes.Ldc_I4_3 && instructionList[index - 1].LoadsField(categoryInfo) && instructionList[index + 3].Calls(minifiableInfo))
+				{
+					instruction.opcode = OpCodes.Pop;
                     instructionList[index + 1].opcode = OpCodes.Br_S;
+				}
+
+                yield return instruction;
             }
         }
 
